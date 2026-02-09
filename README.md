@@ -40,21 +40,25 @@ uv pip install openpyxl
 ### Google Cloud Configuration
 
 1. **Create Service Account** in Google Cloud Console
-2. **Enable APIs**: Google Sheets API + Google Drive API
+2. **Enable APIs**: Google Sheets API + Google Drive API + Cloud Storage API
 3. **Download JSON key** as `service_account.json`
-4. **Create `.env` file**:
+4. **Create a GCS bucket** (e.g. `jac-fleet-images`) in `us-central1`
+5. **Create a tab** called `images_urls` in your Google Sheet (for Looker image URLs)
+6. **Create `.env` file**:
    ```env
    GOOGLE_SHEET_ID=your_spreadsheet_id
    SERVICE_ACCOUNT_FILE=service_account.json
+   GCS_BUCKET_NAME=your_bucket_name
+   GOOGLE_SHEET_ID_LOOKER=your_looker_sheet_id
    ```
-5. **Share Google Sheet** with service account email (found in JSON file)
+7. **Share Google Sheet** with service account email (found in JSON file)
 
 ---
 
 ## Code Analysis
 
 ### Overview
-This is an **ETL (Extract-Transform-Load) pipeline** for fleet management that synchronizes data between Excel files and Google Sheets, with optional image upload capabilities for Looker dashboards.
+This is an **ETL (Extract-Transform-Load) pipeline** for fleet management that synchronizes data between Excel files and Google Sheets, with image upload to Google Cloud Storage for Looker dashboards.
 
 ### File Structure
 
@@ -80,6 +84,14 @@ This is an **ETL (Extract-Transform-Load) pipeline** for fleet management that s
                     Overwrite changed rows
                     Append new rows
                     Format & Sort
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│  Local Images   │ ──▶ │ Looker Manager  │ ──▶ │  GCS Bucket     │
+│  (images/)      │     │ (looker_mgr.py) │     │                 │
+└─────────────────┘     └─────────────────┘     └────────┬────────┘
+                                                         │
+                                                         ▼
+                                               Signed URLs ──▶ Google Sheets
 ```
 
 ---
@@ -118,10 +130,12 @@ The core sync logic works in steps:
 - Applies date format (MM/yyyy)
 
 ### 3. Looker Integration (`looker_manager.py`)
+- Clears the GCS bucket before each run
+- Validates local image files against the configured mapping
 - Uploads vessel map images to Google Cloud Storage
-- Generates 7-day signed URLs
-- Updates URLs in a dedicated Google Sheet tab
-- **Note**: Requires GCS billing activation (credit card)
+- Generates 7-day signed URLs for each image
+- Updates URLs in the `images_urls` tab of Google Sheets
+- Images mapped: `fleet1.jpg` (Pacific Fleet), `fleet2.jpg` (Atlantic Logistics), `fleet3.jpg` (Med. Operations)
 
 ### Key Technical Features
 
@@ -139,7 +153,8 @@ The core sync logic works in steps:
 ### Environment Setup
 - Created Python 3.12 virtual environment using `uv`
 - Installed dependencies from `requirements.txt`
-- Configured Google Sheets API credentials
+- Configured Google Sheets API + Cloud Storage credentials
+- Created GCS bucket `jac-fleet-images`
 
 ### Successful Run Output
 
@@ -178,9 +193,13 @@ STEP 3: EXECUTION
          [OK] Sorted, Centered, and Formatted.
 
 ✅ ETL COMPLETE
-
-⚠️  LOOKER SKIPPED: Code is ready, but Google Cloud Storage requires
-   billing activation (credit card). Feature skipped for now.
+--- Starting Vessel Map Update ---
+INFO: Clearing bucket 'jac-fleet-images'...
+   Bucket cleared.
+Processing 'fleet2.jpg' -> 'Atlantic Logistics' (Row 3)...
+Processing 'fleet3.jpg' -> 'Med. Operations' (Row 4)...
+Processing 'fleet1.jpg' -> 'Pacific Fleet Overview' (Row 2)...
+--- Update Complete ---
 
 ✅ ALL TASKS COMPLETE
 ```
@@ -207,14 +226,15 @@ python test_gs_etl.py
 ```env
 GOOGLE_SHEET_ID=your_sheet_id
 SERVICE_ACCOUNT_FILE=service_account.json
-# Optional: GCS_BUCKET_NAME=your_bucket (requires billing)
+GCS_BUCKET_NAME=jac-fleet-images
+GOOGLE_SHEET_ID_LOOKER=your_looker_sheet_id
 ```
 
 ### `service_account.json`
 Google Cloud service account credentials with:
 - Google Sheets API access
 - Google Drive API access
-- (Optional) Cloud Storage API access
+- Cloud Storage API access
 
 ---
 
@@ -225,5 +245,6 @@ This codebase implements a production-ready data synchronization solution with:
 - Robust error handling with retry logic
 - Clean separation of concerns (config, generation, ETL, assets)
 - Interactive mode for safe production use
+- Image upload to GCS with signed URL generation for Looker dashboards
 
-The code successfully ran in my environment, syncing 16 rows across 2 sheets with automatic formatting.
+The code successfully ran in my environment, syncing 16 rows across 2 sheets with automatic formatting, and uploading 3 vessel map images to Google Cloud Storage with signed URLs.
