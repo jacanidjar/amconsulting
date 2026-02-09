@@ -8,6 +8,8 @@
 | Run the code successfully | ✅ Complete | See [Execution Results](#execution-results) |
 | Explain how it works | ✅ Complete | See [How It Works](#how-it-works) |
 
+📊 **Live Demo**: [View Google Sheets](https://docs.google.com/spreadsheets/d/1re2X36w_9wtw5M_aXfee5wAHNFdmflZ5bb28FdxdZ2Q/edit?usp=sharing)
+
 ---
 
 ## Environment Setup
