@@ -36,8 +36,8 @@ wheels/
 test*.png
 test*.jpg
 test*.jpeg
-mock_data.xlsx
 *.xlsx
+!mock_data.xlsx
 !template.xlsx
 
 # IDE
